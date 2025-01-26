@@ -243,7 +243,33 @@ Now we have the LLVM-IR for our original FMA function. This IR can now be execut
 
 ### Using `llvm` build tools
 
+To compile the generated LLVM IR into an object file, we can use the LLVM provisioned `llc` compiler ass follows:
 
+```
+llc -filetype=obj test_fma.ll -o test_fma.o
+```
+
+This generates a `.o` object file that needs to be further converted to a `.so` shared object file that can be imported elsewhere. This can be done with using a object code linker specific to your system, for linux it's `gcc`. Fortunately `conda` provides a simple eviroment variable `$CC` which redirects the commands to whatever linker is present in the current conda environment depending on the system. This is done as follows:
+
+```
+$CC -shared test_fma.o -o libtest_fma.so
+```
+
+This generates the required `.so` file that can be imported within your project. In Python for instance this can be done using `ctypes`:
+
+```
+import ctypes
+
+module = ctypes.CDLL('./libtest_fma.so')
+module.test_fma.argtypes = []
+module.test_fma.restype = ctypes.c_double
+
+def test_fma():
+    return module.test_fma()
+
+print(test_fma())
+# Outputs: 5.0
+```
 
 ## Using `llvmlite`
 
