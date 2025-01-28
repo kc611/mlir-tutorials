@@ -21,6 +21,8 @@ using the `scf` dialect. This dialect specializes in  operations that represent 
 
 In our specific example above we've used a very specific operation [`scf.for`](https://mlir.llvm.org/docs/Dialects/SCFDialect/#scffor-scfforop) which requires `%start`, `%stop` and `%step` variables respectively. These is equivalent to writing `for(i=start;i<stop;i+=step)` loop in C++ or `for i in range(start, step, stop)` in Python. Then we define the `iter_args(..)` which define the common variable(s) across every iteration of the loop. For instance in our example after each iteration, the variable `%sum_iter` will be supplied to the loop body. The initial value in the first iteration of loop for the `%sum_iter` will be what we assigned to it at initialization during `iter_args()` i.e. `%sum_0` in our case. Then we yield values out of the first iteration using the `scf.yield` syntax, assigning the same yielded value to the `%sum_iter` in the next iteration. Hence continuing the for loop till the termination condition. This continues till the loop terminates and the final value is assigned to `%sum` which is then returned by the function. 
 
+## Pass optimization for looping
+
 Now let's use `mlir-opt` upon this example to see how it converts to LLVM consumable dialect. For this example we'd need the `-convert-scf-to-cf`, `--convert-func-to-llvm`, `--convert-math-to-llvm` and `-convert-index-to-llvm` optimization passes. Most of these are self explanatory in what exactly they're doing, so let's look at the effects of each one on our example. For this we again use the `--mlir-print-ir-after-all` flag. 
 
 On running the following command:
@@ -129,7 +131,7 @@ This transformation hence allows further optimizations within the loop that woul
 We can then transform our code into LLVM IR as we did before using:
 
 ```
-mlir-translate loop_add_opt.mlir --mlir-to-llvmir
+mlir-translate loop_add_opt.mlir --mlir-to-llvmir -o loop_add.ll
 ```
 
 to get the following output:
@@ -168,6 +170,7 @@ define i64 @reduce(i64 %0, i64 %1, i64 %2) {
 
 Here we can see that the for loop has been completely decomposed into break statements across the logic. 
 
+## Program execution
 Now we continue onto the compilation and execution of program as follows:
 
 ```
@@ -191,4 +194,56 @@ def reduce(start, stop, step):
 print(reduce(1, 10, 1))
 # Outputs: 45
 
+```
+
+# Conditionals in MLIR
+
+Now we take a look at conditional operations within MLIR. These are `if-else` cases within `scf` dialect that can be used to represent contional statements wihtin our logic. Suppose for instance we wanted to modify our loop example to make use of a `%limit` variable that would be a limit to the maximum value that can be added to the sum for a given element, such that if an element exceeded this maximum value it won't be added to the sum. This can be repesented as follows:
+
+```
+func.func @reduce(%lb: index, %ub: index, %step: index, %limit: index) -> (index) {
+    %sum_0 = arith.constant 0 : index
+
+    %sum = scf.for %iv = %lb to %ub step %step iter_args(%sum_iter = %sum_0) -> (index) {
+        %conditional_val = arith.cmpi slt, %iv, %limit : index
+
+        %sum_next = scf.if %conditional_val -> (index) {
+            %res_value = arith.addi %sum_iter, %step : index
+            scf.yield %res_value: index
+        } else {
+            scf.yield %arith.constant 0: index
+        }
+
+        scf.yield %sum_next : index
+    }
+
+    return %sum : index
+}
+
+```
+
+Notice that similar to the `scf.for` the `scf.if` follows same notation that uses `scf.yield` to give a value out of the conditional closures. The type and number of the values to be yeilded need to be declared within the conditional declaration. As we do in our example by saying: `%sum_next = scf.if %conditional_val -> (index)` and `scf.yield %res_value: index`. This can be extended to multiple values as `%a, %b... = scf.if %cond -> (type_1, type_2....)` and `scf.yield %val_1, val_2....: type_1, type2....`. 
+
+Notice that for building our conditional statement, we're using `arith.cmpi slt` which is the integer comparision operation within the `arith` dialect. The `slt` stands for signed-less than operation. (Have a look at the [arith.cmpi](https://mlir.llvm.org/docs/Dialects/ArithOps/#arithcmpi-arithcmpiop) docs for more such comparision operation types).
+
+
+## Pass optimization for conditionals
+
+Now let's use `mlir-opt` upon this example similar to how we did with our initial examples. The optimization passes will remain same since the `if` condition here is a part of the `scf` dialect. On running the following set of commands:
+
+```
+mlir-opt --mlir-print-ir-after-all -convert-scf-to-cf --convert-func-to-llvm --convert-math-to-llvm -convert-index-to-llvm loop_add_conditional.mlir -o loop_add_conditional_opt.mlir
+
+mlir-translate loop_add_conditional_opt.mlir --mlir-to-llvmir -o loop_add_conditional.ll
+```
+
+We get the required LLVM-IR which can then be compiled as follows:
+
+```
+llc -filetype=obj loop_add_conditional.ll -o loop_add_conditional.o
+$CC -shared loop_add_conditional.o -o libloop_add_conditional.so
+```
+And executed in Python as follows:
+
+```
 ```
