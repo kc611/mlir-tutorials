@@ -7,14 +7,17 @@ Previously we learned how to build basic program logic in MLIR, how the pipeline
 We can write a basic program that looks like follows:
 
 ```
-func.func @reduce(%lb: index, %ub: index, %step: index) -> (index) {
+func.func @loop_add(%lb: index, %ub: index, %step: index) -> (index) {
     %sum_0 = arith.constant 0 : index
+
     %sum = scf.for %iv = %lb to %ub step %step iter_args(%sum_iter = %sum_0) -> (index) {
-        %sum_next = arith.addi %sum_iter, %step : index
+        %sum_next = arith.addi %sum_iter, %iv : index
         scf.yield %sum_next : index
     }
+
     return %sum : index
 }
+
 ```
 
 using the `scf` dialect. This dialect specializes in  operations that represent control flow constructs such as `if` and `for`. Structured as in the control flow has a structure unlike, for example, `goto`s or `assert`s which are direct jump from one location to another within the logic.
@@ -36,14 +39,14 @@ We get the following output:
 ```
 // -----// IR Dump After SCFToControlFlow (convert-scf-to-cf) //----- //
 module {
-  func.func @reduce(%arg0: index, %arg1: index, %arg2: index) -> index {
+  func.func @loop_add(%arg0: index, %arg1: index, %arg2: index) -> index {
     %c0 = arith.constant 0 : index
     cf.br ^bb1(%arg0, %c0 : index, index)
   ^bb1(%0: index, %1: index):  // 2 preds: ^bb0, ^bb2
     %2 = arith.cmpi slt, %0, %arg1 : index
     cf.cond_br %2, ^bb2, ^bb3
   ^bb2:  // pred: ^bb1
-    %3 = arith.addi %1, %arg2 : index
+    %3 = arith.addi %1, %0 : index
     %4 = arith.addi %0, %arg2 : index
     cf.br ^bb1(%4, %3 : index, index)
   ^bb3:  // pred: ^bb1
@@ -53,16 +56,16 @@ module {
 
 
 // -----// IR Dump After ConvertFuncToLLVMPass (convert-func-to-llvm) //----- //
-module attributes {llvm.data_layout = ""} {
-  llvm.func @reduce(%arg0: i64, %arg1: i64, %arg2: i64) -> i64 {
+module {
+  llvm.func @loop_add(%arg0: i64, %arg1: i64, %arg2: i64) -> i64 {
     %0 = llvm.mlir.constant(0 : index) : i64
     llvm.br ^bb1(%arg0, %0 : i64, i64)
   ^bb1(%1: i64, %2: i64):  // 2 preds: ^bb0, ^bb2
     %3 = llvm.icmp "slt" %1, %arg1 : i64
     llvm.cond_br %3, ^bb2, ^bb3
   ^bb2:  // pred: ^bb1
-    %4 = llvm.add %2, %arg2  : i64
-    %5 = llvm.add %1, %arg2  : i64
+    %4 = llvm.add %2, %1 : i64
+    %5 = llvm.add %1, %arg2 : i64
     llvm.br ^bb1(%5, %4 : i64, i64)
   ^bb3:  // pred: ^bb1
     llvm.return %2 : i64
@@ -71,16 +74,16 @@ module attributes {llvm.data_layout = ""} {
 
 
 // -----// IR Dump After ConvertMathToLLVMPass (convert-math-to-llvm) //----- //
-module attributes {llvm.data_layout = ""} {
-  llvm.func @reduce(%arg0: i64, %arg1: i64, %arg2: i64) -> i64 {
+module {
+  llvm.func @loop_add(%arg0: i64, %arg1: i64, %arg2: i64) -> i64 {
     %0 = llvm.mlir.constant(0 : index) : i64
     llvm.br ^bb1(%arg0, %0 : i64, i64)
   ^bb1(%1: i64, %2: i64):  // 2 preds: ^bb0, ^bb2
     %3 = llvm.icmp "slt" %1, %arg1 : i64
     llvm.cond_br %3, ^bb2, ^bb3
   ^bb2:  // pred: ^bb1
-    %4 = llvm.add %2, %arg2  : i64
-    %5 = llvm.add %1, %arg2  : i64
+    %4 = llvm.add %2, %1 : i64
+    %5 = llvm.add %1, %arg2 : i64
     llvm.br ^bb1(%5, %4 : i64, i64)
   ^bb3:  // pred: ^bb1
     llvm.return %2 : i64
@@ -89,16 +92,16 @@ module attributes {llvm.data_layout = ""} {
 
 
 // -----// IR Dump After ConvertIndexToLLVMPass (convert-index-to-llvm) //----- //
-module attributes {llvm.data_layout = ""} {
-  llvm.func @reduce(%arg0: i64, %arg1: i64, %arg2: i64) -> i64 {
+module {
+  llvm.func @loop_add(%arg0: i64, %arg1: i64, %arg2: i64) -> i64 {
     %0 = llvm.mlir.constant(0 : index) : i64
     llvm.br ^bb1(%arg0, %0 : i64, i64)
   ^bb1(%1: i64, %2: i64):  // 2 preds: ^bb0, ^bb2
     %3 = llvm.icmp "slt" %1, %arg1 : i64
     llvm.cond_br %3, ^bb2, ^bb3
   ^bb2:  // pred: ^bb1
-    %4 = llvm.add %2, %arg2  : i64
-    %5 = llvm.add %1, %arg2  : i64
+    %4 = llvm.add %2, %1 : i64
+    %5 = llvm.add %1, %arg2 : i64
     llvm.br ^bb1(%5, %4 : i64, i64)
   ^bb3:  // pred: ^bb1
     llvm.return %2 : i64
@@ -118,7 +121,7 @@ The most interesting transformation here is the `convert-scf-to-cf` which conver
     cf.cond_br %2, ^bb2, ^bb3
 
   ^bb2:  // pred: ^bb1
-    %3 = arith.addi %1, %arg2 : index
+    %3 = arith.addi %1, %0 : index
     %4 = arith.addi %0, %arg2 : index
     cf.br ^bb1(%4, %3 : index, index)
 
@@ -140,11 +143,7 @@ to get the following output:
 ; ModuleID = 'LLVMDialectModule'
 source_filename = "LLVMDialectModule"
 
-declare ptr @malloc(i64)
-
-declare void @free(ptr)
-
-define i64 @reduce(i64 %0, i64 %1, i64 %2) {
+define i64 @loop_add(i64 %0, i64 %1, i64 %2) {
   br label %4
 
 4:                                                ; preds = %8, %3
@@ -154,7 +153,7 @@ define i64 @reduce(i64 %0, i64 %1, i64 %2) {
   br i1 %7, label %8, label %11
 
 8:                                                ; preds = %4
-  %9 = add i64 %6, %2
+  %9 = add i64 %6, %5
   %10 = add i64 %5, %2
   br label %4
 
@@ -201,17 +200,17 @@ print(reduce(1, 10, 1))
 Now we take a look at conditional operations within MLIR. These are `if-else` cases within `scf` dialect that can be used to represent contional statements wihtin our logic. Suppose for instance we wanted to modify our loop example to make use of a `%limit` variable that would be a limit to the maximum value that can be added to the sum for a given element, such that if an element exceeded this maximum value it won't be added to the sum. This can be repesented as follows:
 
 ```
-func.func @reduce(%lb: index, %ub: index, %step: index, %limit: index) -> (index) {
+func.func @loop_add_conditional(%lb: index, %ub: index, %step: index, %limit: index) -> (index) {
     %sum_0 = arith.constant 0 : index
 
     %sum = scf.for %iv = %lb to %ub step %step iter_args(%sum_iter = %sum_0) -> (index) {
         %conditional_val = arith.cmpi slt, %iv, %limit : index
 
         %sum_next = scf.if %conditional_val -> (index) {
-            %res_value = arith.addi %sum_iter, %step : index
+            %res_value = arith.addi %sum_iter, %iv : index
             scf.yield %res_value: index
         } else {
-            scf.yield %arith.constant 0: index
+            scf.yield %sum_iter: index
         }
 
         scf.yield %sum_next : index
@@ -246,4 +245,17 @@ $CC -shared loop_add_conditional.o -o libloop_add_conditional.so
 And executed in Python as follows:
 
 ```
+import ctypes
+
+module = ctypes.CDLL('./libloop_add_conditional.so')
+
+module.loop_add_conditional.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+module.loop_add_conditional.restype = ctypes.c_int
+
+def loop_add_conditional(start, stop, step, limit):
+    return module.loop_add_conditional(start, stop, step, limit)
+
+print(loop_add_conditional(1, 10, 2, 8))
+# Outputs: 28 (1+3+5+7)
+
 ```

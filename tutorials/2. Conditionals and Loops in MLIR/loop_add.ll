@@ -1,11 +1,7 @@
 ; ModuleID = 'LLVMDialectModule'
 source_filename = "LLVMDialectModule"
 
-declare ptr @malloc(i64)
-
-declare void @free(ptr)
-
-define i64 @reduce(i64 %0, i64 %1, i64 %2) {
+define i64 @loop_add(i64 %0, i64 %1, i64 %2) {
   br label %4
 
 4:                                                ; preds = %8, %3
@@ -15,7 +11,7 @@ define i64 @reduce(i64 %0, i64 %1, i64 %2) {
   br i1 %7, label %8, label %11
 
 8:                                                ; preds = %4
-  %9 = add i64 %6, %2
+  %9 = add i64 %6, %5
   %10 = add i64 %5, %2
   br label %4
 

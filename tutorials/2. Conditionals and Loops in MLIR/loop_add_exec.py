@@ -2,11 +2,11 @@ import ctypes
 
 module = ctypes.CDLL('./libloop_add.so')
 
-module.reduce.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
-module.reduce.restype = ctypes.c_int
+module.loop_add.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+module.loop_add.restype = ctypes.c_int
 
-def reduce(start, stop, step):
-    return module.reduce(start, stop, step)
+def loop_add(start, stop, step):
+    return module.loop_add(start, stop, step)
 
-print(reduce(1, 10, 4))
+print(loop_add(1, 10, 1))
 # Outputs: 9
