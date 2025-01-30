@@ -4,9 +4,174 @@ In this tutorial we'll learn about `memref`s in MLIR. A `memref` (or a Memory Re
 
 Now let's take alook at an example.
 
+# Memref load: Index a NumPy array
+
+`memref`s in itself is a type which can used just like every other once the inner dimensions and types are declared. Here we have an example of taking in `memref` named `%input_array` of size 1024 with `f32` datatype as an argument to a function and indexing it with a particular array index. 
+
+
+```
+func.func @array_index(%buffer: memref<1024xf32>, %array_idx: index) -> (f32) {
+  %res = memref.load %buffer[%array_idx] : memref<1024xf32>
+  return %res : f32
+}
+```
+
+As we can see here, we're using `memref.load` which loads the 
+
+Now we run the required MLIR passes over this logic using `mlir-opt`. The passes we require now are: `-finalize-memref-to-llvm`, `-convert-func-to-llvm`, `-convert-index-to-llvm` and `-reconcile-unrealized-casts`. Along with this we'll pass the flag `--mlir-print-ir-after-all` to see the effects of every single pass upon our dialect.
+
+The complete command will look as follows:
+
+```
+mlir-opt --mlir-print-ir-after-all -finalize-memref-to-llvm -convert-func-to-llvm -convert-index-to-llvm -reconcile-unrealized-casts array_index.mlir -o array_index_opt.mlir
+```
+
+Upon running the command we get the following output:
+
+```
+// -----// IR Dump After FinalizeMemRefToLLVMConversionPass (finalize-memref-to-llvm) //----- //
+module {
+  func.func @array_index(%arg0: memref<1024xf32>, %arg1: index) -> f32 {
+    %0 = builtin.unrealized_conversion_cast %arg1 : index to i64
+    %1 = builtin.unrealized_conversion_cast %arg0 : memref<1024xf32> to !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
+    %2 = llvm.extractvalue %1[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %3 = llvm.getelementptr %2[%0] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %4 = llvm.load %3 : !llvm.ptr -> f32
+    return %4 : f32
+  }
+}
+
+
+// -----// IR Dump After ConvertFuncToLLVMPass (convert-func-to-llvm) //----- //
+module {
+  llvm.func @array_index(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: i64, %arg3: i64, %arg4: i64, %arg5: i64) -> f32 {
+    %0 = builtin.unrealized_conversion_cast %arg5 : i64 to index
+    %1 = llvm.mlir.undef : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
+    %2 = llvm.insertvalue %arg0, %1[0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %3 = llvm.insertvalue %arg1, %2[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %4 = llvm.insertvalue %arg2, %3[2] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %5 = llvm.insertvalue %arg3, %4[3, 0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %6 = llvm.insertvalue %arg4, %5[4, 0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %7 = builtin.unrealized_conversion_cast %6 : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> to memref<1024xf32>
+    %8 = builtin.unrealized_conversion_cast %7 : memref<1024xf32> to !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
+    %9 = builtin.unrealized_conversion_cast %0 : index to i64
+    %10 = builtin.unrealized_conversion_cast %7 : memref<1024xf32> to !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
+    %11 = llvm.extractvalue %10[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %12 = llvm.getelementptr %11[%9] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %13 = llvm.load %12 : !llvm.ptr -> f32
+    llvm.return %13 : f32
+  }
+}
+
+
+// -----// IR Dump After ConvertIndexToLLVMPass (convert-index-to-llvm) //----- //
+module {
+  llvm.func @array_index(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: i64, %arg3: i64, %arg4: i64, %arg5: i64) -> f32 {
+    %0 = builtin.unrealized_conversion_cast %arg5 : i64 to index
+    %1 = llvm.mlir.undef : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
+    %2 = llvm.insertvalue %arg0, %1[0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %3 = llvm.insertvalue %arg1, %2[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %4 = llvm.insertvalue %arg2, %3[2] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %5 = llvm.insertvalue %arg3, %4[3, 0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %6 = llvm.insertvalue %arg4, %5[4, 0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %7 = builtin.unrealized_conversion_cast %6 : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> to memref<1024xf32>
+    %8 = llvm.extractvalue %6[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %9 = llvm.getelementptr %8[%arg5] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %10 = llvm.load %9 : !llvm.ptr -> f32
+    llvm.return %10 : f32
+  }
+}
+
+
+// -----// IR Dump After ReconcileUnrealizedCasts (reconcile-unrealized-casts) //----- //
+module {
+  llvm.func @array_index(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: i64, %arg3: i64, %arg4: i64, %arg5: i64) -> f32 {
+    %0 = llvm.mlir.undef : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
+    %1 = llvm.insertvalue %arg0, %0[0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %2 = llvm.insertvalue %arg1, %1[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %3 = llvm.insertvalue %arg2, %2[2] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %4 = llvm.insertvalue %arg3, %3[3, 0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %5 = llvm.insertvalue %arg4, %4[4, 0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %6 = llvm.extractvalue %5[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
+    %7 = llvm.getelementptr %6[%arg5] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %8 = llvm.load %7 : !llvm.ptr -> f32
+    llvm.return %8 : f32
+  }
+}
+
+```
+
+Notice that in the `convert-func-to-llvm` pass, the argument `%arg0: memref<1024xf32>` gets converted into `%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: i64, %arg3: i64, %arg4: i64`. These are the `allocated`, `aligned`, `offset`, `shape`, `stride` whicch are explained as follows:
+
+- `allocated`:
+- `aligned`:
+- `offset`:
+- `shape`:
+- `stride`: 
+
+## Program compilation and execution
+
+Next we use `mlir-translate` and compile the generated MLIR into LLVM IR using:
+
+```
+mlir-translate array_index_opt.mlir --mlir-to-llvmir -o array_index.ll
+```
+
+And continue execution of program just like our previous tutorials as follows:
+
+```
+llc -filetype=obj array_index.ll -o array_index.o
+$CC -shared array_index.o -o libarray_index.so
+```
+
+And run the program within Python.
+
+```
+import ctypes
+import numpy as np
+
+module = ctypes.CDLL('./libarray_index.so')
+
+# array_index.mlir:
+
+# func.func @array_index(%buffer: memref<1024xf32>, %array_idx: index) -> (f32) {
+#   %res = memref.load %buffer[%array_idx] : memref<1024xf32>
+#   return %res : f32
+# }
+
+def array_index(allocated, aligned, offset, shape_1, stride_1, start):
+    return module.array_index(allocated, aligned, offset, shape_1, stride_1, start)
+
+def as_memref_descriptor(arr, ty):
+    intptr_t = getattr(ctypes, f"c_int{8 * ctypes.sizeof(ctypes.c_void_p)}")
+    N = arr.ndim
+
+    ty_ptr = ctypes.POINTER(ty)
+
+    arg0 = ctypes.cast(arr.ctypes.data, ty_ptr)
+    arg1 = arg0
+    arg2 = intptr_t(0)
+
+    shapes_arg = [intptr_t(x) for x in arr.shape]
+    strides_arg = [intptr_t(x) for x in arr.strides]
+
+    return arg0, arg1, arg2, *shapes_arg, *strides_arg
+
+# The array is a list of 1024 elements, all of which are 1.
+array = np.arange(1024, dtype=np.float32)
+
+array_as_memref = as_memref_descriptor(array, ctypes.c_float)
+
+module.array_index.argtypes = [*[type(x) for x in array_as_memref], ctypes.c_int]
+module.array_index.restype = ctypes.c_float
+
+print(array_index(*array_as_memref,  105))
+# Outputs 105.0
+```
+
 # Memref load: Sum of array elements example.
 
-`memref`s in itself is a type which can used just like every other once the inner dimensions and types are declared. Here we have an example of taking in `memref` named `%input_array` of size 1024 with `f32` datatype as an argument to a function and summing up all elements within the given boundsof the `memref`. We can modify the `for` loop from our last tuotrial as follows:  
+We can modify the `for` loop from our last tuotrial as follows:  
 
 ```
 func.func @array_sum(%input_array: memref<1024xf32>, %lb: index, %ub: index, %step: index) -> (f32) {
@@ -201,38 +366,52 @@ llc -filetype=obj array_sum.ll -o array_sum.o
 $CC -shared array_sum.o -o libarray_sum.so
 ```
 
-And run the program within Python, notice that within Python we have to use lists to represent the `memref`
+And run the program within Python:
 
 
 ```
 import ctypes
+import numpy as np
 
 module = ctypes.CDLL('./libarray_sum.so')
 
-module.array_sum.argtypes = [ctypes.Array, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+def array_sum(allocated, aligned, offset, shape_1, stride_1, start, stop, step):
+    return module.array_sum(allocated, aligned, offset, shape_1, stride_1, start, stop, step)
+
+def as_memref_descriptor(arr, ty):
+    intptr_t = getattr(ctypes, f"c_int{8 * ctypes.sizeof(ctypes.c_void_p)}")
+    ty_ptr = ctypes.POINTER(ty)
+
+    arg0 = ctypes.cast(arr.ctypes.data, ty_ptr)
+    arg1 = arg0
+    arg2 = intptr_t(0)
+
+    shapes_arg = [intptr_t(x) for x in arr.shape]
+    strides_arg = [intptr_t(x) for x in arr.strides]
+
+    return arg0, arg1, arg2, *shapes_arg, *strides_arg
+
+array = np.arange(1024, dtype=np.float32)
+
+array_as_memref = as_memref_descriptor(array, ctypes.c_float)
+
+module.array_sum.argtypes = [*[type(x) for x in array_as_memref], ctypes.c_long, ctypes.c_long, ctypes.c_long]
 module.array_sum.restype = ctypes.c_float
 
-def array_sum(array, start, stop, step):
-    return module.array_sum(array, start, stop, step)
+print(module.array_sum.argtypes)
+# [<class '__main__.LP_c_float'>, <class '__main__.LP_c_float'>, <class 'ctypes.c_long'>, <class 'ctypes.c_long'>, <class 'ctypes.c_long'>, <class 'ctypes.c_long'>, <class 'ctypes.c_long'>, <class 'ctypes.c_long'>]
 
-# The array is a list of 1024 elements, all of which are 1.
-array = [1.0] * 1024
-
-array = (ctypes.c_float * len(array))(*array)
-
-print(array_sum(array, 0, 1024, 1))
-# Outputs: 1024.0
+print(array_sum(*array_as_memref, 0, 1023, 1))
+# Outputs: 522754.0.0
 
 ```
 
-# Memref store: (Sin(x))^2 + (Cos(y))^2 upon arrays
+# Memref store and return: (Sin(x))^2 + (Cos(y))^2 upon arrays
 
-Now we move onto a more complex example that does the operation `sin(x)^2 + cos(y)^2` upon entire arrays. This would look as follows: 
+Now we move onto a more complex example that does the operation `sin(x)^2 + cos(y)^2` upon entire arrays and saves the result within the resulting array inplace. This would look as follows: 
 
 ```
-func.func @array_sine(%array_1: memref<1024xf64>, %array_2: memref<1024xf64>, %lb: index, %ub: index, %step: index) -> (memref<1024xf64>) {
-
-  %res_array = memref.alloc() : memref<1024xf64>
+func.func @array_trig(%array_1: memref<1024xf64>, %array_2: memref<1024xf64>, %res_array: memref<1024xf64>, %lb: index, %ub: index, %step: index) -> () {
 
   scf.for %iv = %lb to %ub step %step iter_args() -> () {
     %u = memref.load %array_1[%iv] : memref<1024xf64>
@@ -250,12 +429,10 @@ func.func @array_sine(%array_1: memref<1024xf64>, %array_2: memref<1024xf64>, %l
     memref.store %res_value, %res_array[%iv] : memref<1024xf64>
   }
 
-  return %res_array: memref<1024xf64>
+  return
 }
 
 ```
-
-Here you can notice we're declaring a new `memref` called `%result_array` using `memref.alloca` which allocates a region of memory for the declared `memref`. Further down the line we do the required `memref.load` from the respective arrays and finally a `memref.store` of the final value within the `%result_array`
 
 Now we execute the same set of commands upon this example:
 
@@ -279,5 +456,47 @@ $CC -shared array_trig.o -o libarray_trig.so
 And run the program within Python:
 
 ```
+import ctypes
+import numpy as np
+
+module = ctypes.CDLL('./libarray_trig.so')
+
+def as_memref_descriptor(arr, ty):
+    intptr_t = getattr(ctypes, f"c_int{8 * ctypes.sizeof(ctypes.c_void_p)}")
+    ty_ptr = ctypes.POINTER(ty)
+
+    arg0 = ctypes.cast(arr.ctypes.data, ty_ptr)
+    arg1 = arg0
+    arg2 = intptr_t(0)
+
+    shapes_arg = [intptr_t(x) for x in arr.shape]
+    strides_arg = [intptr_t(x) for x in arr.strides]
+
+    return arg0, arg1, arg2, *shapes_arg, *strides_arg
+
+array_1 = np.arange(1024, dtype=np.float64)
+array_2 = np.arange(1024, dtype=np.float64)
+res_array = np.zeros(1024, dtype=np.float64)
+
+array_1_as_memref = as_memref_descriptor(array_1, ctypes.c_double)
+array_2_as_memref = as_memref_descriptor(array_2, ctypes.c_double)
+res_array_as_memref = as_memref_descriptor(res_array, ctypes.c_double)
+
+module.array_trig.argtypes = [
+    *[type(x) for x in array_1_as_memref], 
+    *[type(x) for x in array_2_as_memref], 
+    *[type(x) for x in res_array_as_memref], 
+    ctypes.c_long, ctypes.c_long, ctypes.c_long]
+
+module.array_trig.restype = ctypes.c_double
+
+def array_trig(*args):
+    return module.array_trig(*args)
+
+print(array_trig(*array_1_as_memref, *array_2_as_memref, *res_array_as_memref, 0, 1024, 1))
+
+print(res_array)
+
+print(np.allclose(res_array, np.sin(array_1) ** 2 + np.cos(array_2) ** 2))
 
 ```

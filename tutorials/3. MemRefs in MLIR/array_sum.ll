@@ -11,7 +11,7 @@ define float @array_sum(ptr %0, ptr %1, i64 %2, i64 %3, i64 %4, i64 %5, i64 %6, 
 
 14:                                               ; preds = %18, %8
   %15 = phi i64 [ %23, %18 ], [ %5, %8 ]
-  %16 = phi float [ %22, %18 ], [ 0.000000e+00, %8 ]
+  %16 = phi float [ %22, %18 ], [ 1.000000e+00, %8 ]
   %17 = icmp slt i64 %15, %6
   br i1 %17, label %18, label %24
 

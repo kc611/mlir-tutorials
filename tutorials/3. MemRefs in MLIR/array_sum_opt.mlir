@@ -6,7 +6,7 @@ module {
     %3 = llvm.insertvalue %arg2, %2[2] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
     %4 = llvm.insertvalue %arg3, %3[3, 0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
     %5 = llvm.insertvalue %arg4, %4[4, 0] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)> 
-    %6 = llvm.mlir.constant(0.000000e+00 : f32) : f32
+    %6 = llvm.mlir.constant(1.000000e+00 : f32) : f32
     llvm.br ^bb1(%arg5, %6 : i64, f32)
   ^bb1(%7: i64, %8: f32):  // 2 preds: ^bb0, ^bb2
     %9 = llvm.icmp "slt" %7, %arg6 : i64

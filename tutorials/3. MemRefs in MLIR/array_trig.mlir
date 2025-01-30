@@ -1,6 +1,4 @@
-func.func @array_trig(%array_1: memref<1024xf64>, %array_2: memref<1024xf64>, %lb: index, %ub: index, %step: index) -> (memref<1024xf64>) {
-
-  %res_array = memref.alloc() : memref<1024xf64>
+func.func @array_trig(%array_1: memref<1024xf64>, %array_2: memref<1024xf64>, %res_array: memref<1024xf64>, %lb: index, %ub: index, %step: index) -> () {
 
   scf.for %iv = %lb to %ub step %step iter_args() -> () {
     %u = memref.load %array_1[%iv] : memref<1024xf64>
@@ -18,6 +16,6 @@ func.func @array_trig(%array_1: memref<1024xf64>, %array_2: memref<1024xf64>, %l
     memref.store %res_value, %res_array[%iv] : memref<1024xf64>
   }
 
-  return %res_array: memref<1024xf64>
+  return
 }
 
