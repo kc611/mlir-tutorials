@@ -16,9 +16,9 @@ def as_memref_descriptor(arr, ty):
 
     return arg0, arg1, arg2, *shapes_arg, *strides_arg
 
-array_1 = np.ones(10000, dtype=np.float64).reshape(100, 100)
+array_1 = np.ones(10 * 10, dtype=np.float64).reshape(10, 10)
 conv_filter = np.arange(9, dtype=np.float64).reshape(3, 3)
-res_array = np.zeros((98, 98), dtype=np.float64)
+res_array = np.zeros((8, 8), dtype=np.float64)
 
 array_1_as_memref = as_memref_descriptor(array_1, ctypes.c_float)
 conv_filter_as_memref = as_memref_descriptor(conv_filter, ctypes.c_float)
