@@ -2,7 +2,7 @@
 
 <b>Welcome to this tutorial series....</b>
 
-The Numba team at Anaconda recently started work on a project to build cutting edge compiler tooling using MLIR. Henceforth, as an introductory resource these are a series of tutorials produced as a effort towards getting folks introduced to Multi-Level Intermidiate Representation (widely known as the MLIR framework). Using this we'll understand why it was built, it's purpose and usage.
+The Numba team at Anaconda recently started work on a project to build cutting edge compiler tooling using  Multi-Level Intermidiate Representation (widely known as the MLIR framework). Henceforth, as an introductory resource, these are a series of tutorials produced as a effort towards getting folks familiarized with the MLIR framework. We'll also discuss why it was built, it's purpose and usage within industry.
 
 # What is MLIR?
 
@@ -45,7 +45,7 @@ All the required packages get installed as dependencies automatically.
 
 # A basic function written in MLIR
 
-Now we write a example function named `test_fma` as follows:
+We can write a example function named `test_fma` using the `func`, `arith` and `math` dialect as follows:
 
 ```mlir
 func.func @test_fma() -> f64 {
@@ -57,14 +57,16 @@ func.func @test_fma() -> f64 {
 }
 ```
 
-and save it in a file `test_fma.mlir`. This will serve as the highest dialect of our compiler pipeline for this tutorial. 
+and save it in a file `test_fma.mlir`. This will serve as the highest dialect of our compiler pipeline for this tutorial and will be lowered using multiple pass optimizations.
 
 
-As we can see, this is a function represented by `@test_fma()` returning a 64-bit floating-point or an`f64` type value. 
+We can see that the function represented by `@test_fma()` returns a 64-bit floating-point or an`f64` type value as declared within its type definition: 
 
 ```
 func.func @test_fma() -> f64 {}
 ```
+
+This declaration uses the `func` dialect which is one of the built-in dialects within MLIR framework. (See [`FuncOps`](https://mlir.llvm.org/docs/Dialects/Func/#funcfunc-funcfuncop) for more details) For simple visualizations imagine the dialects as built-in packages/standard libraries within MLIR that holds abstractions of logic which can be mapped onto a different form of abstraction representing the same logic.
 
 Within the function we declare 3 variables `%arg1`, `%arg2` and `%arg3` each being a constant of type `f64`. 
 
@@ -73,7 +75,7 @@ Within the function we declare 3 variables `%arg1`, `%arg2` and `%arg3` each bei
   %arg2 = arith.constant 2.0 : f64
   %arg3 = arith.constant 3.0 : f64
 ```
-These constant declarations are part of the `arith` dialect which is a built-in dialect within the MLIR project that holds basic integer and floating point operations. (See [`MLIR::ArithOps`](https://mlir.llvm.org/docs/Dialects/ArithOps/) for details)
+These constant declarations are part of the `arith` dialect which is again a built-in dialect within the MLIR project that holds basic integer and floating point operations. (See [`MLIR::ArithOps`](https://mlir.llvm.org/docs/Dialects/ArithOps/) for details)
 
 Next we declare a variable `res` representing the result of `math.fma` operation to which we supply the three arguments `%arg1`, `%arg2` and `%arg3` respectively and assign it the type `f64` too.
 
@@ -88,7 +90,7 @@ And finally we return the resulting value:
   func.return %res : f64
 ```
 
-Note that in the above example we have simply declared the entry points for different dialects (namely `arith` and `math` in our case) and have not yet run any optimization or conversion passes. Hence this is the unlowered form without any dialect specific transformations.
+Note that in the above example we have simply declared the entry points for different dialects (namely `func`, `arith` and `math` in our case) and have not yet run any optimization or conversion passes. Hence this is the unlowered form without any dialect specific transformations.
 
 # Usage of different dialects
 
@@ -243,7 +245,7 @@ Now we have the LLVM-IR for our original FMA function. This IR can now be execut
 
 ### Using `llvm` build tools
 
-To compile the generated LLVM IR into an object file, we can use the LLVM provisioned `llc` compiler ass follows:
+To compile the generated LLVM IR into an object file, we can use the LLVM provisioned `llc` compiler as follows:
 
 ```
 llc -filetype=obj test_fma.ll -o test_fma.o

@@ -101,13 +101,13 @@ module {
 
 ```
 
-Notice that in the `convert-func-to-llvm` pass, the argument `%arg0: memref<1024xf32>` gets converted into `%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: i64, %arg3: i64, %arg4: i64`. These are the `allocated`, `aligned`, `offset`, `shape`, `stride` whicch are explained as follows:
+Notice that in the `convert-func-to-llvm` pass, the argument `%arg0: memref<1024xf32>` gets converted into `%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: i64, %arg3: i64, %arg4: i64`. These are the `allocated`, `aligned`, `offset`, `shape`, `stride` which are explained as follows:
 
-- `allocated`:
-- `aligned`:
-- `offset`:
-- `shape`:
-- `stride`: 
+- `allocated`: The pointer to the data buffer, used to deallocate the `memref`.
+- `aligned`: A pointer to the properly aligned data. (Alignment)
+- `offset`: Distance as meassured in number of elements between beginning of `aligned` and first element that can be accessed through `memref`
+- `shape`: An array of integers containing the shape of the original array. In our example, this represents first dimention, every other dimension is splatted across the arguments when converted to LLVM-IR unless we use `_ciface_` interface in which case it's represented as a struct.
+- `stride`: Array of integers containing strides of array, follows similar convention as shape. Strides is the number of elements in memory to jump for acessing the next index of a particulr dimension. 
 
 ## Program compilation and execution
 

@@ -4,7 +4,7 @@ Previously we learned how to build basic program logic in MLIR, how the pipeline
 
 # Looping in MLIR
 
-We can write a basic program that looks like follows:
+We can write a basic program that looks like follows using the `scf` dialect:
 
 ```
 func.func @loop_add(%lb: index, %ub: index, %step: index) -> (index) {
@@ -20,7 +20,7 @@ func.func @loop_add(%lb: index, %ub: index, %step: index) -> (index) {
 
 ```
 
-using the `scf` dialect. This dialect specializes in  operations that represent control flow constructs such as `if` and `for`. Structured as in the control flow has a structure unlike, for example, `goto`s or `assert`s which are direct jump from one location to another within the logic.
+The `scf` dialect specializes in  operations that represent control flow constructs such as `if` and `for`. Structured control flow has a structure unlike, for example, `goto`s or `assert`s which are direct jump from one location to another within the logic.
 
 In our specific example above we've used a very specific operation [`scf.for`](https://mlir.llvm.org/docs/Dialects/SCFDialect/#scffor-scfforop) which requires `%start`, `%stop` and `%step` variables respectively. These is equivalent to writing `for(i=start;i<stop;i+=step)` loop in C++ or `for i in range(start, step, stop)` in Python. Then we define the `iter_args(..)` which define the common variable(s) across every iteration of the loop. For instance in our example after each iteration, the variable `%sum_iter` will be supplied to the loop body. The initial value in the first iteration of loop for the `%sum_iter` will be what we assigned to it at initialization during `iter_args()` i.e. `%sum_0` in our case. Then we yield values out of the first iteration using the `scf.yield` syntax, assigning the same yielded value to the `%sum_iter` in the next iteration. Hence continuing the for loop till the termination condition. This continues till the loop terminates and the final value is assigned to `%sum` which is then returned by the function. 
 

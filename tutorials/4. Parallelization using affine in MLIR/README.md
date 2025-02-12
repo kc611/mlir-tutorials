@@ -37,9 +37,6 @@ The main advantage of using `affine` is that
 
 We need the multiple passes when using `affine`. Some notable ones are:
 
-- `affine-loop-normalize`:
-- `lower-affine`:
-
 The full set of optimization passes are listed below as a single command of `mlir-opt`:
 
 ```
@@ -56,10 +53,10 @@ Now we compile the program using `llc` and make a shared object file using the c
 
 ```
 llc -filetype=obj --relocation-model=pic array_trig_parallel.ll -o array_trig_parallel.o
-$CC -shared -fPIC -lm -fopenmp array_trig_parallel.o -o libarray_trig_parallel.so
+$CC -shared -fPIC -lm -lgomp array_trig_parallel.o -o libarray_trig_parallel.so
 ```
 
-Note that here we've used the `-fopenmp` flag. This links the symbols within shared object code to thier respective internal OpenMP implementations.
+Note that here we've used the `-lgomp` flag. This links the symbols within shared object code to thier respective internal OpenMP implementations.
 
 Now we have the following Python script that uses `ctypes` to execute the function within the shared object.
 
